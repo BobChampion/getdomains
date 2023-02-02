@@ -37,22 +37,49 @@ async function getDomains(searchText) {
   let domains = await newPage.evaluate(() => {
     let domainsElements = document.querySelectorAll('.domain-name .text');
 
-    let domainTexts = Object.values(domainsElements).map((domainsElement) => ({
-      name: domainsElement.innerHTML,
-    }));
+    let domainTexts = Object.values(domainsElements).map(
+      (domainsElement) => domainsElement.innerHTML,
+    );
+    domainTexts = domainTexts.filter((domainText) => domainText.split('.').at(-1) === 'com');
 
     return domainTexts;
   });
 
   console.log(domains);
+  Array.prototype.diff = function (a) {
+    return this.filter(function (i) {
+      return a.indexOf(i) < 0;
+    });
+  };
+  const path = `${searchText}.txt`;
 
-  fs.writeFile(`${searchText}.json`, JSON.stringify(domains, null, ' '), (err) => {
-    if (err) return err;
-    console.log('domains > domains.txt');
-  });
+  if (fs.existsSync(path)) {
+    fs.readFile(path, 'utf8', (err, data) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      var array = data.toString().split('\n');
+      var diffDomains = domains.diff(array);
+      diffDomains.forEach((diffDomain) => {
+        fs.appendFile(path, diffDomain + '\n', function (err) {
+          if (err) return console.log(err);
+          console.log('Appended!');
+        });
+      });
+    });
+    console.log('file exists');
+  } else {
+    var file = fs.createWriteStream(path);
+    domains.forEach(function (v) {
+      file.write(v + '\n');
+    });
+    file.end();
+    console.log('file not found!');
+  }
 
   await browser.close();
 }
 
 // getDomains('bonus');
-getDomains('tech');
+// getDomains('tech');
